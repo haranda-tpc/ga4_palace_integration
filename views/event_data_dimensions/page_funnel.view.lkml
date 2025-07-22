@@ -1,5 +1,5 @@
 view: page_funnel {
-extension: required
+  extension: required
 
 ## Filters
   filter: page_1_filter {

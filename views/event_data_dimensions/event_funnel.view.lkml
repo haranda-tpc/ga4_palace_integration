@@ -1,5 +1,5 @@
 view: event_funnel {
-extension: required
+  extension: required
 
 ## Filters
   filter: event_1_filter {

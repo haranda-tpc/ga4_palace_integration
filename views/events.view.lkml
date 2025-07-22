@@ -9,10 +9,284 @@
 ##   - event_path
 
 include: "event_data_dimensions/*.view"
-include: "bqml/arima_event_model/*.view"
 
 view: events {
   extends: [event_data_event_params, event_data_user_properties, goals, page_data, event_path]
+
+## Custom Dimensions
+
+  dimension: pr_channeling {
+    type: string
+    sql:
+       CASE
+          -- Direct
+          WHEN ${traffic_source__source} = '(direct)'
+            THEN 'Direct'
+          -- Consumer Sites
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"((www|cancun|los-cabos|thegrand|jamaica|beach|sun|cozumel|playacar)\.|)(thepalacecompany|palaceresorts|moonpalace|moonpalacecancun|leblancsparesorts)\.com") = true
+            THEN 'Consumer Sites'
+          -- Baglioni Hotels Sites
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"((www|sardinia|puglia|london|rome|venice|florence|milan|maldives)\.|)baglionihotels\.com") = true
+            THEN 'Baglioni Hotels Sites'
+          -- Bookings Sites
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"(online|)(bookings|paquetes|packages|manage-reservation)(cancun|nizuc|thegrand|jamaica|cabo|beach|cozumel|playadelcarmen|sun|pr|florence|london|maldives|milan|puglia|rome|venice|sardinia|)(pr|)\.(baglionihotels|palaceresorts|moonpalace|leblancsparesorts)\.com") = true
+           THEN 'Consumer Bookings'
+          -- Segment Sites
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"(weddings|meetings|mvg|transfers|productions|globalsales|golf)\.(palaceresorts|thepalacecompany)\.com|(www\.|fixed\.|portal\.|)(fundacionpalace|palaceelite|palaceproagents)\.(com|org)") = true
+            THEN 'Segment Sites'
+          -- OTAs
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"expedia|booking\.com|tripadvisor\.") = true
+            AND ${traffic_source__medium} != 'metasearch'
+              THEN 'OTAs'
+          -- Social Media
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"facebook|instagram|twitter|pinterest|linkedin|tiktok|youtube|lnk") = true
+            AND REGEXP_CONTAINS(${traffic_source__medium}, r"referral|social") = true
+              THEN 'Social Media'
+          --Asksuite
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"asksuite") = true
+           THEN "Asksuite"
+          -- SEM
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"google|bing|yahoo|youtube|adwords|unlinked SA360") = true
+           AND REGEXP_CONTAINS(${traffic_source__medium}, r"cpc|ppc|video|unlinked SA360") = true
+              THEN "SEM"
+          -- Paid Social Media
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"facebook|instagram|twitter|pinterest|linkedin|tiktok|x") = true
+           AND REGEXP_CONTAINS(${traffic_source__medium}, r"display|paid") = true
+              THEN 'Paid Social Media'
+          -- Platform Self Service
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"google-my-business|gmb|tripadvisor-bl|tripadvisorbl|tripadvisor-adexpress") = true
+           AND REGEXP_CONTAINS(${traffic_source__medium}, r"display|organic") = true
+             THEN "Platform Self Service"
+          -- Medios Externos
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"quantcast|criteo|rtb-house|sojern|groovinads|palace-app|teads|illumin|priceline|centurion|centurion-departures|ekn|trivago|vidoomy|mosaic-media|seedtag|rtbhouse|groovin-ads|arkeero|cybba|epsilon|Cybba Inc\.|logan|travelpulse|quancast|amadeus") = true
+           THEN 'Medios Externos'
+          -- DSP
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"safeframe.googlesyndication.com") = true
+            OR REGEXP_CONTAINS(${traffic_source__medium}, r"cpm|display") = true
+              THEN "DSP"
+          -- Metasearch
+          WHEN REGEXP_CONTAINS(${traffic_source__medium}, r"metasearch|sponsored") =true
+            OR REGEXP_CONTAINS(${traffic_source__source}, r"tripadvisor|hotelfinder") = true
+              THEN 'Metasearch'
+          -- SEO
+          WHEN ${traffic_source__medium} = 'organic'
+            THEN 'SEO'
+          -- Inbound
+          WHEN REGEXP_CONTAINS(${traffic_source__source}, r"inbound|hubspot") = true
+           AND ${traffic_source__medium} LIKE '%email%'
+              THEN 'Inbound'
+          -- Curacity
+          WHEN ${traffic_source__source} = 'curacity'
+            AND ${traffic_source__medium} LIKE '%email%'
+              THEN 'Curacity'
+          -- Onsite Message
+          WHEN ${traffic_source__medium} = 'message'
+            THEN 'Onsite Message'
+          -- Affiliates
+          WHEN ${traffic_source__medium} = 'affiliate'
+            THEN 'Affiliates'
+          --Referral/Otros
+          WHEN ${traffic_source__medium} = 'referral'
+            THEN 'Referral External Sites '
+              ELSE 'Otros'
+          END
+      ;;
+  }
+
+  dimension: tipo_de_sitio {
+    type: string
+    sql:
+    CASE
+      WHEN ${device__web_info__hostname} LIKE '%reservhotel.com'
+        OR ${device__web_info__hostname} LIKE 'packages%'
+      THEN 'Reservhotel'
+
+      WHEN ${device__web_info__hostname} LIKE '%booking%' THEN 'CLEVER'
+
+      WHEN (${device__web_info__hostname} LIKE '%palaceresorts.com'
+      OR ${device__web_info__hostname} LIKE '%moonpalace.com'
+      OR ${device__web_info__hostname} LIKE '%moonpalacecancun.com'
+      OR ${device__web_info__hostname} LIKE '%leblancsparesorts.com')
+      AND ${device__web_info__hostname} NOT LIKE '%booking%'
+      THEN 'Contenido'
+      END
+      ;;
+  }
+
+  dimension: propiedad {
+    type: string
+    sql:
+    CASE
+      WHEN ${device__web_info__hostname} IN ("www.palaceresorts.com","palaceresorts.com","onlinebookingspr.palaceresorts.com","onlinebookingspaypr.palaceresorts.com")
+      THEN "Palace Resorts Brand"
+
+      WHEN ${device__web_info__hostname} IN ("beach.palaceresorts.com","bookingsbeachpr.palaceresorts.com","bookingsbeachpaypr.palaceresorts.com")
+      OR ${hotel_name_reservhotel} = "10444"
+      THEN "Beach Palace"
+
+      WHEN ${device__web_info__hostname} IN ("cozumel.palaceresorts.com","bookingscozumelpr.palaceresorts.com","bookingscozumelpaypr.palaceresorts.com")
+      OR ${hotel_name_reservhotel} = "10445"
+      THEN "Cozumel Palace"
+
+      WHEN ${device__web_info__hostname} IN ("playacar.palaceresorts.com","bookingsplayadelcarmenpr.palaceresorts.com","bookingsplayadelcarmenpaypr.palaceresorts.com")
+      OR ${hotel_name_reservhotel} = "10449"
+      THEN "Playacar Palace"
+
+      WHEN ${device__web_info__hostname} IN ("sun.palaceresorts.com","bookingssunpr.palaceresorts.com","bookingssunpaypr.palaceresorts.com")
+      OR ${hotel_name_reservhotel} = "10450"
+      THEN "Sun Palace"
+
+      WHEN ${device__web_info__hostname} IN ("www.moonpalace.com","moonpalace.com","onlinebookingspr.moonpalace.com","onlinebookingspaypr.moonpalace.com")
+      THEN "Moon Palace Brand"
+
+      WHEN ${device__web_info__hostname} IN ("www.moonpalacecancun.com","moonpalacecancun.com","bookingscancunpr.moonpalace.com","bookingsnizucpr.moonpalace.com","bookingsnizucpaypr.moonpalace.com")
+      OR ${hotel_name_reservhotel} IN ("10443","10740")
+      THEN "Moon Palace Cancun"
+
+      WHEN ${device__web_info__hostname} IN ("jamaica.moonpalace.com","bookingsjamaicapr.moonpalace.com","bookingsjamaicapaypr.moonpalace.com")
+      OR ${hotel_name_reservhotel} = "10448"
+      THEN "Moon Palace Jamaica"
+
+      WHEN ${device__web_info__hostname} IN ("thegrand.moonpalace.com","bookingsthegrandpr.moonpalace.com","bookingsthegrandpaypr.moonpalace.com")
+      OR ${hotel_name_reservhotel} = "10451"
+      THEN "Moon Palace The Grand"
+
+      WHEN ${device__web_info__hostname} IN ("www.leblancsparesorts.com","leblancsparesorts.com","onlinebookingspr.leblancsparesorts.com","onlinebookingspaypr.leblancsparesorts.com")
+      THEN "Le Blanc Brand"
+
+      WHEN ${device__web_info__hostname} IN ("cancun.leblancsparesorts.com","bookingscancunpr.leblancsparesorts.com","bookingscancunpaypr.leblancsparesorts.com")
+      OR ${hotel_name_reservhotel} = "10447"
+      THEN "Le Blanc Cancun"
+
+      WHEN ${device__web_info__hostname} IN ("los-cabos.leblancsparesorts.com","bookingscabopr.leblancsparesorts.com","bookingscabopaypr.leblancsparesorts.com")
+      OR ${hotel_name_reservhotel} = "10457"
+      THEN "Le Blanc Los Cabos"
+      END
+      ;;
+  }
+
+  dimension: propiedad_motor {
+    type: string
+    sql:
+    CASE
+      WHEN UPPER(${hotel_name_clever}) LIKE "%BEACH PALACE%"
+        THEN "Beach Palace"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%COZUMEL PALACE%"
+        THEN "Cozumel Palace"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%LE BLANC SPA RESORT CANCUN%"
+        THEN "Le Blanc Cancun"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%LE BLANC SPA RESORT LOS CABOS%"
+        THEN "Le Blanc Los Cabos"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%MOON PALACE CANCUN%"
+        OR UPPER(${hotel_name_clever}) LIKE "%MOON PALACE NIZUC%"
+          THEN "Moon Palace Cancun"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%MOON PALACE JAMAICA%"
+        THEN "Moon Palace Jamaica"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%MOON PALACE THE GRAND%"
+        THEN "Moon Palace The Grand"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%PLAYACAR PALACE%"
+        THEN "Playacar Palace"
+      WHEN UPPER(${hotel_name_clever}) LIKE "%SUN PALACE%"
+        THEN "Sun Palace"
+    END
+  ;;
+  }
+
+  dimension: marca_motor {
+    type: string
+    sql:
+    CASE
+      WHEN ${propiedad_motor} IN ("Beach Palace","Cozumel Palace","Playacar Palace","Sun Palace")
+        THEN "Palace Resorts"
+      WHEN ${propiedad_motor} IN ("Le Blanc Cancun","Le Blanc Los Cabos")
+        THEN "Le Blanc"
+      WHEN ${propiedad_motor} IN ("Moon Palace Cancun","Moon Palace Jamaica","Moon Palace The Grand")
+        THEN "Moon Palace"
+    END
+  ;;
+  }
+
+  dimension: mercado {
+    type: string
+    sql:
+    CASE
+        -- US
+        WHEN REGEXP_CONTAINS(${geo__country}, r"United States|U.S. Virgin Islands")=true
+          THEN 'US'
+        -- MX
+        WHEN ${geo__country} = 'Mexico'
+          THEN 'MX'
+        -- CA
+        WHEN ${geo__country} = 'Canada'
+          THEN 'CA'
+        -- LAT
+         WHEN REGEXP_CONTAINS(${geo__sub_continent}, r"South America|Central America") = true
+         AND NOT ${geo__country} LIKE 'Mexico'
+            THEN 'LATAM'
+        -- IT
+        WHEN ${geo__country} = 'Italy'
+          THEN 'IT'
+        -- UK
+        WHEN ${geo__country} = 'United Kingdom'
+          THEN 'UK'
+        -- EU
+        WHEN REGEXP_CONTAINS(${geo__continent}, r"Europe") = true
+         AND NOT REGEXP_CONTAINS(${geo__country}, r"United Kingdom|Italy")=true
+            THEN 'EU'
+            ELSE 'ROW'
+      END;;
+  }
+
+  dimension: hotel_name_clever {
+    type: string
+    sql: (SELECT value.string_value FROM UNNEST(event_params) WHERE key = "hotel_name") ;;
+  }
+
+  dimension: hotel_name_reservhotel {
+    type: string
+    sql: CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = "hotel_name") AS string) ;;
+  }
+
+  dimension: number_of_nights {
+    type: number
+    sql: (SELECT value.int_value FROM UNNEST(event_params) WHERE key = "nights") ;;
+  }
+
+  dimension: number_of_rooms {
+    type: number
+    sql: (SELECT value.int_value FROM UNNEST(event_params) WHERE key = "number_of_rooms") ;;
+  }
+
+  dimension: room_nights {
+    type: number
+    sql: ${number_of_nights} * ${number_of_rooms} ;;
+  }
+
+  measure: sum_of_nights {
+    type: sum
+    sql: ${number_of_nights} ;;
+  }
+
+  measure: sum_of_rooms {
+    type: sum
+    sql: ${number_of_rooms} ;;
+  }
+
+  measure: sum_of_room_nights {
+    type: sum
+    sql: ${room_nights} ;;
+  }
+
+  dimension: marca {
+    type: string
+    sql:
+    CASE
+      WHEN ${device__web_info__hostname} LIKE '%palaceresorts.com' THEN 'Palace Resorts'
+      WHEN ${device__web_info__hostname} LIKE '%moonpalace.com' OR ${device__web_info__hostname} LIKE '%moonpalacecancun.com' THEN 'Moon Palace'
+      WHEN ${device__web_info__hostname} LIKE '%leblancsparesorts.com' THEN 'Le Blanc'
+      ELSE 'Otros'
+    END;;
+  }
 
 ## Dimensions
 
@@ -54,21 +328,10 @@ view: events {
 
   dimension_group: event_time {
     type: time
-    timeframes: [date,day_of_month,day_of_week,day_of_week_index,day_of_year,month,month_name,month_num,fiscal_quarter,fiscal_quarter_of_year,year,time,hour,hour_of_day,minute,second]
+    timeframes: [date,day_of_month,day_of_week,day_of_week_index,day_of_year,month,month_name,month_num,fiscal_quarter,fiscal_quarter_of_year,year,time,hour,hour_of_day]
     label: "Event"
     sql: TIMESTAMP_MICROS(${TABLE}.event_timestamp) ;;
     description: "Event Date/Time from Event Timestamp."
-  }
-  parameter: event_time_window {
-    allowed_value: {
-      label: "Hourly window"
-      value: "hour"
-    }
-    allowed_value: {
-      label: "Minute window"
-      value: "minute"
-    }
-    default_value: "Daily"
   }
 
   dimension: event_timestamp { hidden: yes sql: ${TABLE}.event_timestamp ;; }
@@ -325,6 +588,13 @@ view: events {
 
 
   ## ECommerce Fields
+
+  dimension: purchase_promo_code {
+    type: string
+    sql: (SELECT value.string_value FROM UNNEST(event_params) WHERE key = "coupon") ;;
+    group_label: "Ecommerce"
+  }
+
   dimension: ecommerce__purchase_revenue {
     type: number
     sql: ${TABLE}.ecommerce.purchase_revenue ;;
@@ -593,118 +863,136 @@ view: events {
 
   ## ECommerce
 
-    measure: total_transactions {
-      group_label: "Ecommerce"
-      label: "Transactions"
-      type: count_distinct
-      sql: ${ecommerce__transaction_id} ;;
-      filters: [ecommerce__transaction_id: "-(not set)"]
-    }
+  measure: total_transactions {
+    group_label: "Ecommerce"
+    label: "Transactions"
+    type: count_distinct
+    sql: ${ecommerce__transaction_id} ;;
+    filters: [ecommerce__transaction_id: "-(not set)"]
+  }
 
-    measure: transaction_revenue_per_user {
-      group_label: "Ecommerce"
-      type: number
-      sql: 1.0 * (${total_purchase_revenue}/NULLIF(${sessions.total_users},0)) ;;
-      value_format_name: usd
-    }
+  measure: transaction_revenue_per_user {
+    group_label: "Ecommerce"
+    type: number
+    sql: 1.0 * (${total_purchase_revenue}/NULLIF(${sessions.total_users},0)) ;;
+    value_format_name: usd
+  }
 
-    measure: transaction_conversion_rate {
-      group_label: "Ecommerce"
-      label: "Transaction Conversion Rate"
-      type: number
-      sql: 1.0 * (${total_transactions}/NULLIF(${sessions.total_sessions},0)) ;;
-      value_format_name: percent_2
-    }
+  measure: transaction_conversion_rate {
+    group_label: "Ecommerce"
+    label: "Transaction Conversion Rate"
+    type: number
+    sql: 1.0 * (${total_transactions}/NULLIF(${sessions.total_sessions},0)) ;;
+    value_format_name: percent_2
+  }
 
-    measure: total_purchase_revenue {
-      group_label: "Ecommerce"
-      label: "Purchase Revenue"
-      type: sum_distinct
-      sql: ${ecommerce__purchase_revenue} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_purchase_revenue {
+    group_label: "Ecommerce"
+    label: "Purchase Revenue"
+    type: sum_distinct
+    sql: ${ecommerce__purchase_revenue} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_purchase_revenue_usd {
-      group_label: "Ecommerce"
-      label: "Purchase Revenue (USD)"
-      type: sum
-      sql: ${ecommerce__purchase_revenue_in_usd} ;;
-      # sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_purchase_revenue_usd {
+    group_label: "Ecommerce"
+    label: "Purchase Revenue (USD)"
+    type: sum
+    sql: ${ecommerce__purchase_revenue_in_usd} ;;
+    # sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_refund_value {
-      group_label: "Ecommerce"
-      label: "Refund Value"
-      type: sum_distinct
-      sql: ${ecommerce__refund_value} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: purchase_revenue_usd_25p {
+    group_label: "Ecommerce"
+    label: "Purchase Revenue (USD) 25th Percentile"
+    type: percentile
+    percentile: 25
+    sql: ${ecommerce__purchase_revenue_in_usd} ;;
+    value_format_name: usd
+  }
 
-    measure: total_refund_value_usd {
-      group_label: "Ecommerce"
-      label: "Refund Value (USD)"
-      type: sum_distinct
-      sql: ${ecommerce__refund_value_in_usd} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: purchase_revenue_usd_75p {
+    group_label: "Ecommerce"
+    label: "Purchase Revenue (USD) 75th Percentile"
+    type: percentile
+    percentile: 75
+    sql: ${ecommerce__purchase_revenue_in_usd} ;;
+    value_format_name: usd
+  }
 
-    measure: total_shipping_value {
-      group_label: "Ecommerce"
-      label: "Shipping Value"
-      type: sum_distinct
-      sql: ${ecommerce__shipping_value} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_refund_value {
+    group_label: "Ecommerce"
+    label: "Refund Value"
+    type: sum_distinct
+    sql: ${ecommerce__refund_value} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_shipping_value_usd {
-      group_label: "Ecommerce"
-      label: "Shipping Value (USD)"
-      type: sum_distinct
-      sql: ${ecommerce__shipping_value_in_usd} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_refund_value_usd {
+    group_label: "Ecommerce"
+    label: "Refund Value (USD)"
+    type: sum_distinct
+    sql: ${ecommerce__refund_value_in_usd} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_tax_value {
-      group_label: "Ecommerce"
-      label: "Tax Value"
-      type: sum_distinct
-      sql: ${ecommerce__tax_value} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_shipping_value {
+    group_label: "Ecommerce"
+    label: "Shipping Value"
+    type: sum_distinct
+    sql: ${ecommerce__shipping_value} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_tax_value_usd {
-      group_label: "Ecommerce"
-      label: "Tax Value (USD)"
-      type: sum_distinct
-      sql: ${ecommerce__tax_value_in_usd} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: usd
-    }
+  measure: total_shipping_value_usd {
+    group_label: "Ecommerce"
+    label: "Shipping Value (USD)"
+    type: sum_distinct
+    sql: ${ecommerce__shipping_value_in_usd} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_item_quantity {
-      group_label: "Ecommerce"
-      label: "Transaction Items"
-      type: sum_distinct
-      sql: ${ecommerce__total_item_quantity} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: decimal_0
-    }
+  measure: total_tax_value {
+    group_label: "Ecommerce"
+    label: "Tax Value"
+    type: sum_distinct
+    sql: ${ecommerce__tax_value} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
 
-    measure: total_unique_items {
-      group_label: "Ecommerce"
-      label: "Unique Items"
-      type: sum_distinct
-      sql: ${ecommerce__unique_items} ;;
-      sql_distinct_key: ${ecommerce__transaction_id} ;;
-      value_format_name: decimal_0
-    }
+  measure: total_tax_value_usd {
+    group_label: "Ecommerce"
+    label: "Tax Value (USD)"
+    type: sum_distinct
+    sql: ${ecommerce__tax_value_in_usd} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: usd
+  }
+
+  measure: total_item_quantity {
+    group_label: "Ecommerce"
+    label: "Transaction Items"
+    type: sum_distinct
+    sql: ${ecommerce__total_item_quantity} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: decimal_0
+  }
+
+  measure: total_unique_items {
+    group_label: "Ecommerce"
+    label: "Unique Items"
+    type: sum_distinct
+    sql: ${ecommerce__unique_items} ;;
+    sql_distinct_key: ${ecommerce__transaction_id} ;;
+    value_format_name: decimal_0
+  }
 
   # ----- Sets of fields for drilling ------
   set: detail {
