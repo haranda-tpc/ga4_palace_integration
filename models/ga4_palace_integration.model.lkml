@@ -4,7 +4,7 @@ include: "/dashboards/*.dashboard"
 include: "/explores/*.explore.lkml"
 include: "/views/**/*.view.lkml"
 
-label: "Google Analytics 4"
+label: "Google Analytics Sessions"
 
 
 datagroup: ga4_main_datagroup {
