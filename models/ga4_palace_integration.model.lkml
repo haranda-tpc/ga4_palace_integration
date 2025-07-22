@@ -1,8 +1,7 @@
 connection: "@{GA4_CONNECTION}"
 
 include: "/dashboards/*.dashboard"
-include: "/explores/*.explore.lkml"
-include: "/views/**/*.view.lkml"
+include: "/explores/**/*.explore.lkml"
 
 label: "Google Analytics Sessions"
 

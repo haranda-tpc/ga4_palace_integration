@@ -1,5 +1,5 @@
 # this is the code for the date comparison tool, which mimics what google 360 does in the browser in comparing two different date ranges. use with _date_dim.view.lkml
-view: date_comparison {
+view: _date_comparison {
 #  label: "Timeline Comparison Fields"
 
 extension: required
