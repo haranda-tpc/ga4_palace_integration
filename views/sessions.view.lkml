@@ -87,6 +87,12 @@ extends: [event_funnel, page_funnel]
   }
 
 ## Dimensions
+  dimension: event_raw {
+    sql: ${session_date::datetime} ;;
+    type: date_raw
+    hidden: yes
+  }
+
   dimension: sl_key {
     type: string
     sql: ${TABLE}.sl_key ;;
