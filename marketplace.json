@@ -15,12 +15,6 @@
     },
     "GA4_TABLE_VARIABLE": {
         "label": "GA4 Table Variable"
-    },
-    "EVENT_COUNT": {
-        "label": "Event Count Limit"
-    },
-    "BQML_PARAMETER": {
-        "label": "BQML Models Included"
     }
   },
   "models": [

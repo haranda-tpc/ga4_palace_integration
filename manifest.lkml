@@ -1,20 +1,20 @@
-project_name: "ga_four"
 
 ## Connection Constants:
 constant: GA4_CONNECTION {
-  value: "bq-looker-marketplace-ga4"
+  value: "pr-mktg-analyt-bq-conn-analytics"
   export: override_required
 }
 
 constant: GA4_SCHEMA {
-  value: "ga4_export"
-  export: override_optional
+  value: "pr-mktg-analyt-prod.analytics_268229233"
+  export: override_required
 }
 
 constant: GA4_TABLE_VARIABLE {
   value: "events_*"
-  export: override_optional
+  export: override_required
 }
+
 constant: EVENT_COUNT {
   value: ""
   export: override_optional
